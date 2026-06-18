@@ -189,12 +189,25 @@ def slide_to_png(pptx_path, out_png):
             return out_png
     except Exception as e:
         print(f"(PowerPoint render unavailable: {e})")
-    # 2) LibreOffice headless
+    # 2) LibreOffice headless (CI/Linux). Prefer PDF -> PNG for a sharp image.
     try:
         soffice = shutil.which("soffice") or shutil.which("libreoffice")
         if soffice:
             outdir = out_png.parent
-            subprocess.check_call([soffice, "--headless", "--convert-to", "png",
+            prof = "-env:UserInstallation=file://" + str(outdir / ".lo_profile")
+            pdftoppm = shutil.which("pdftoppm")
+            if pdftoppm:
+                subprocess.check_call([soffice, prof, "--headless", "--convert-to", "pdf",
+                                       "--outdir", str(outdir), str(pptx_path)])
+                pdf = outdir / (pptx_path.stem + ".pdf")
+                if pdf.exists():
+                    subprocess.check_call([pdftoppm, "-png", "-r", "150", "-singlefile",
+                                           str(pdf), str(out_png.with_suffix(""))])
+                    if out_png.exists():
+                        print("Slide image rendered via LibreOffice + pdftoppm.")
+                        return out_png
+            # Fallback: direct PNG export
+            subprocess.check_call([soffice, prof, "--headless", "--convert-to", "png",
                                    "--outdir", str(outdir), str(pptx_path)])
             produced = outdir / (pptx_path.stem + ".png")
             if produced.exists():
@@ -202,6 +215,8 @@ def slide_to_png(pptx_path, out_png):
                     produced.replace(out_png)
                 print("Slide image rendered via LibreOffice.")
                 return out_png
+        else:
+            print("(LibreOffice not found on PATH)")
     except Exception as e:
         print(f"(LibreOffice render unavailable: {e})")
     print("WARN: could not render slide image; sending without inline preview.")
