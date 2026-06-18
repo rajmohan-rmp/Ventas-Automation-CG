@@ -337,6 +337,114 @@ def make_chart(title, rows, col_bars, col_line, tmp_dir, report_date=None, palet
     plt.close(fig)
     return path
 
+# ── Full-dashboard PNG (matplotlib only — no LibreOffice needed) ───────────────
+def _draw_chart_ax(ax, title, rows, col_bars, col_line, report_date=None, palette=None):
+    if report_date:
+        try:
+            end=datetime.strptime(report_date,"%Y-%m-%d")-timedelta(days=1)
+            dates=[(end-timedelta(days=6-i)).strftime("%Y-%m-%d") for i in range(7)]
+        except Exception:
+            dates=_dates(rows) or ["No data"]
+    else:
+        dates=_dates(rows) or ["No data"]
+    x=np.arange(len(dates))
+    bar_data={c:[_val(rows,d,c) for d in dates] for c in col_bars}
+    line_data=[_val(rows,d,col_line) for d in dates]
+    ax.set_facecolor(CHART_BG2)
+    ymax_line=max(line_data) if any(v>0 for v in line_data) else 1
+    ylim_top=max(ymax_line*1.2,1)
+    n=len(col_bars); colors=(palette or STACK_COLORS)[:n]
+    bottom=np.zeros(len(dates)); bar_w=0.55
+    min_seg=max((ylim_top/0.9)*0.05,0.5)
+    for (col,vals),color in zip(bar_data.items(),colors):
+        vals_arr=np.array(vals,dtype=float)
+        ax.bar(x,vals_arr,bar_w,bottom=bottom,label=col,color=color,zorder=3,alpha=0.93)
+        txt_col='#1A1A1A' if color in ("#F1C40F","#F39C12","#FFD700","#2ECC71","#FFC107") else 'white'
+        for i,vv in enumerate(vals):
+            if vv>0:
+                if vv>=min_seg:
+                    ax.text(x[i],bottom[i]+vv/2,str(vv),ha='center',va='center',color=txt_col,fontsize=8,fontweight='bold')
+                else:
+                    ax.text(x[i],bottom[i]+vv+ylim_top*0.02,str(vv),ha='center',va='bottom',color='white',fontsize=7,fontweight='bold',
+                            bbox=dict(boxstyle='round,pad=0.18',facecolor='#1a1a2e',edgecolor=color,linewidth=0.8,alpha=0.9))
+        bottom+=vals_arr
+    ax2=ax.twinx()
+    ax2.plot(x,line_data,color=LYELLOW,linewidth=2.0,marker='o',markersize=4,zorder=4)
+    for xi,vv in zip(x,line_data):
+        if vv>0:
+            ax2.annotate(str(vv),(xi,vv),textcoords="offset points",xytext=(0,5),ha='center',color='white',fontsize=8,fontweight='bold')
+    ax.set_xticks(x); ax.set_xticklabels([_short(d) for d in dates],color='white',fontsize=8,rotation=20,ha='right')
+    ax.tick_params(colors='white'); ax.set_yticks([]); ax2.set_yticks([])
+    ax2.tick_params(colors='white'); ax.spines[:].set_visible(False); ax2.spines[:].set_visible(False)
+    ax.set_title(title,color='white',fontsize=11,fontweight='bold',pad=6)
+    ax.grid(axis='y',color='white',alpha=0.06,zorder=0)
+    ax.set_ylim(0,ylim_top/0.9); ax2.set_ylim(0,ylim_top)
+    handles=[plt.Rectangle((0,0),1,1,color=c) for c in colors]
+    handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=2,marker='o',ms=4)]
+    ax.legend(handles,list(col_bars)+["Total"],loc='upper center',bbox_to_anchor=(0.5,-0.08),
+              facecolor=CHART_BG,edgecolor='none',labelcolor='white',fontsize=6.5,ncol=n+1,framealpha=0.5,
+              handlelength=1.0,handleheight=0.8,borderpad=0.3,columnspacing=0.6)
+
+def render_dashboard_png(data, report_date, out_png, dpi=150):
+    """Render the whole dashboard (header + KPI tiles + 3 charts) as one PNG,
+    using matplotlib only. No LibreOffice/PowerPoint required."""
+    from matplotlib.patches import Rectangle
+    rd=report_date or data.get("report_date")
+    st =data.get("Stock Transfer Summary",[]); pos=data.get("POS Sales Summary",[]); pri=data.get("Primary Sales Summary",[])
+    try: last_day=(datetime.strptime(rd,"%Y-%m-%d")-timedelta(days=1)).strftime("%Y-%m-%d")
+    except Exception: last_day=rd
+    v=_val; TEAL="#1172B8"; RED="#C0392B"; GREY="#34495E"
+    def trip(rows,d): return [("Completed" if False else "", )]
+    pri_td=[("Completed",v(pri,None,"COMPLETED"),TEAL),("InProgress",v(pri,None,"INPROGRESS"),GREY),("Pending",v(pri,None,"PENDING"),RED)]
+    pri_ld=[("Completed",v(pri,last_day,"COMPLETED"),TEAL),("InProgress",v(pri,last_day,"INPROGRESS"),GREY),("Pending",v(pri,last_day,"PENDING"),RED)]
+    pos_td=[("Completed",v(pos,None,"COMPLETED"),TEAL),("InProgress",v(pos,None,"INPROGRESS"),GREY),("Pending",v(pos,None,"PENDING"),RED)]
+    pos_ld=[("Completed",v(pos,last_day,"COMPLETED"),TEAL),("InProgress",v(pos,last_day,"INPROGRESS"),GREY),("Pending",v(pos,last_day,"PENDING"),RED)]
+    st_td=[("Orders",v(st,None,"TOTAL_REQUESTS"),GREY),("Delivered",v(st,None,"DELIVERED"),TEAL),("GR Pending",v(st,None,"GR_PENDING"),RED)]
+    st_ld=[("Orders",v(st,last_day,"TOTAL_REQUESTS"),GREY),("Delivered",v(st,last_day,"DELIVERED"),TEAL),("GR Pending",v(st,last_day,"GR_PENDING"),RED)]
+    sections=[("Primary Sales",pri_td,pri_ld),("POS Sales",pos_td,pos_ld),("Stock Transfer",st_td,st_ld)]
+    chart_specs=[("Primary Sales (7-Day Trend)",pri,["COMPLETED","INPROGRESS","PENDING"],"TOTAL_COUNT",None),
+                 ("POS Sales (7-Day Trend)",pos,["COMPLETED","INPROGRESS","PENDING"],"TOTAL_COUNT",None),
+                 ("Stock Transfer (7-Day Trend)",st,["APPROVED","DELIVERED","GR_PENDING","CREATED"],"TOTAL_REQUESTS",
+                  ["#FFC107","#2ECC71","#E74C3C","#9B59B6","#3498DB"])]
+    fig=plt.figure(figsize=(13.333,7.5),dpi=dpi); fig.patch.set_facecolor("#06224A")
+    bg=fig.add_axes([0,0,1,1]); bg.set_axis_off(); bg.set_xlim(0,1); bg.set_ylim(0,1)
+    bg.add_patch(Rectangle((0,0.92),1,0.08,color="#0E518C",zorder=1))
+    bg.text(0.015,0.965,"VENTAS DAILY DASHBOARD",ha="left",va="center",color="white",fontsize=20,fontweight="bold",zorder=3)
+    bg.text(0.015,0.933,"Report Date: %s    |    Airtel Congo (CG)    |    Last 7 Days Trend"%_short_date_long(rd),
+            ha="left",va="center",color="#B0C4DE",fontsize=9.5,zorder=3)
+    bg.text(0.985,0.96,"6D Technologies",ha="right",va="center",color="white",fontsize=13,fontweight="bold",zorder=3)
+    M=0.015; colw=(1-4*M)/3; ptop=0.90
+    g=0.006; sh_h=0.030; rowlabel_h=0.018; tile_h=0.072; rg=0.008
+    def row_tiles(x,y,w,h,tiles):
+        tg=0.006; tw=(w-2*tg)/3
+        for j,(lbl,val,color) in enumerate(tiles):
+            tx=x+j*(tw+tg)
+            bg.add_patch(Rectangle((tx,y),tw,h,color=color,zorder=2))
+            bg.text(tx+tw/2,y+h*0.66,lbl,ha="center",va="center",color="white",fontsize=7.5,fontweight="bold",zorder=3)
+            bg.text(tx+tw/2,y+h*0.30,str(val),ha="center",va="center",color="white",fontsize=14,fontweight="bold",zorder=3)
+    for i,(name,td,ld) in enumerate(sections):
+        x0=M+i*(colw+M)
+        panel_h=g+sh_h+g+rowlabel_h+tile_h+rg+rowlabel_h+tile_h+g
+        pbot=ptop-panel_h
+        bg.add_patch(Rectangle((x0,pbot),colw,panel_h,color="#0A2A57",zorder=1))
+        bg.add_patch(Rectangle((x0+g,ptop-g-sh_h),colw-2*g,sh_h,color="#0E518C",zorder=2))
+        bg.text(x0+colw/2,ptop-g-sh_h/2,"%s  (as of %s)"%(name,_short(last_day)),
+                ha="center",va="center",color="white",fontsize=8.5,fontweight="bold",zorder=3)
+        y=ptop-g-sh_h-g
+        bg.text(x0+g,y-rowlabel_h/2,"7-DAY TOTAL",ha="left",va="center",color="white",fontsize=7,fontweight="bold",zorder=3)
+        y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,td); y=y-tile_h-rg
+        bg.text(x0+g,y-rowlabel_h/2,"LAST DAY",ha="left",va="center",color="white",fontsize=7,fontweight="bold",zorder=3)
+        y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,ld)
+    cb_bottom=0.10; cb_h=0.35
+    for i,(title,rows,bars,line,palette) in enumerate(chart_specs):
+        x0=M+i*(colw+M)+0.012
+        ax=fig.add_axes([x0,cb_bottom,colw-0.024,cb_h])
+        _draw_chart_ax(ax,title,rows,bars,line,rd,palette)
+    fig.savefig(str(out_png),dpi=dpi,facecolor=fig.get_facecolor())
+    plt.close(fig)
+    print("Dashboard PNG rendered (matplotlib):",out_png)
+    return out_png
+
 # ── PPTX helpers ─────────────────────────────────────────────────────────────
 def _bg(slide,color):
     f=slide.background.fill; f.solid(); f.fore_color.rgb=color
@@ -401,7 +509,7 @@ def _row_lbl(slide,text,x,y,w,h):
     r.font.size=Pt(8.5); r.font.bold=True; r.font.color.rgb=WHITE
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-def generate_slide(html_list, report_date, output_path, data=None):
+def generate_slide(html_list, report_date, output_path, data=None, png_path=None):
     if data is None:
         if isinstance(html_list, str): html_list=[html_list]
         data=merge_data(html_list)
@@ -536,6 +644,11 @@ def generate_slide(html_list, report_date, output_path, data=None):
 
         prs.save(output_path)
         print(f"Saved: {output_path}")
+        if png_path:
+            try:
+                render_dashboard_png(data, rd, png_path)
+            except Exception as e:
+                print("WARN: dashboard PNG render failed:", e)
 
     return output_path
 
@@ -550,15 +663,16 @@ if __name__=="__main__":
     parser.add_argument("--html",help="Single HTML string")
     parser.add_argument("--date",default="",help="Report date YYYY-MM-DD")
     parser.add_argument("--output",required=True,help="Output .pptx path")
+    parser.add_argument("--png",default="",help="Also render the dashboard as a PNG at this path")
     args=parser.parse_args()
     if args.csv_file:
         print("Building from latest mail CSV attachments:")
         data=csv_to_data(args.csv_file, args.date)
-        generate_slide(None, args.date, args.output, data=data)
+        generate_slide(None, args.date, args.output, data=data, png_path=(args.png or None))
     elif args.html_file:
         html_list=[Path(f).read_text(encoding="utf-8") for f in args.html_file]
-        generate_slide(html_list, args.date, args.output)
+        generate_slide(html_list, args.date, args.output, png_path=(args.png or None))
     elif args.html:
-        generate_slide([args.html], args.date, args.output)
+        generate_slide([args.html], args.date, args.output, png_path=(args.png or None))
     else:
         parser.error("Provide --csv-file, --html-file, or --html")

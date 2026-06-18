@@ -280,12 +280,14 @@ def _pick(paths, key):
 
 
 # -- 2. generate --
-def generate(csv_paths, report_date, out_path):
+def generate(csv_paths, report_date, out_path, png_path=None):
     pri = _pick(csv_paths, "PRIMARY"); pos = _pick(csv_paths, "POS")
     stk = _pick(csv_paths, "STOCK") or _pick(csv_paths, "TRANSFER")
     args = [sys.executable, str(GENERATOR), "--csv-file"]
     args += [p for p in (pri, pos, stk) if p]
     args += ["--date", report_date, "--output", str(out_path)]
+    if png_path:
+        args += ["--png", str(png_path)]
     print("Generating deck:", " ".join(args))
     subprocess.check_call(args, cwd=str(HERE))
     return out_path
@@ -383,11 +385,16 @@ def main():
     csv_dir, rd, csvs = fetch_latest(gmail, args.query)
     report_date = args.date or rd
     out = WORKDIR / f"Ventas_Dashboard_{report_date}.pptx"
-    generate(csvs, report_date, out)
+    png_out = WORKDIR / f"Ventas_Dashboard_{report_date}.png"
+    generate(csvs, report_date, out, png_path=(None if args.no_image else png_out))
 
     slide_png = None
     if not args.no_image:
-        slide_png = slide_to_png(out, WORKDIR / f"Ventas_Dashboard_{report_date}.png")
+        if png_out.exists():
+            slide_png = png_out            # matplotlib-rendered (no LibreOffice)
+            print("Inline image: matplotlib dashboard PNG.")
+        else:
+            slide_png = slide_to_png(out, png_out)   # fallback (PowerPoint/LibreOffice)
 
     drive_link = None
     if not args.no_drive:
