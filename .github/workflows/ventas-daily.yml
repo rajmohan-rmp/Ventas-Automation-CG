@@ -8,7 +8,7 @@ on:
 
 jobs:
   send-dashboard:
-    runs-on: ubuntu-latest      # has Python + LibreOffice preinstalled
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,9 +17,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install LibreOffice + poppler (for the inline slide image)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-impress poppler-utils
 
       - name: Install dependencies
         run: pip install -r cloudrun/requirements.txt
