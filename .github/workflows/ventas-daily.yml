@@ -1,0 +1,30 @@
+name: Ventas Daily Dashboard
+
+on:
+  schedule:
+    - cron: "30 4 * * *"      # 10:00 IST (UTC+5:30)
+  workflow_dispatch: {}        # manual "Run workflow" button
+
+jobs:
+  send-dashboard:
+    runs-on: ubuntu-latest      # has Python + LibreOffice preinstalled
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r cloudrun/requirements.txt
+
+      - name: Run Ventas pipeline (fetch -> build -> Drive -> email)
+        env:
+          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}
+          MAIL_TO: "raj.mohan@6dtech.co.in"
+          MAIL_CC: "hari.krishnan@6dtech.co.in"
+          MAIL_BCC: ""
+          VENTAS_WORKDIR: ${{ runner.temp }}
+        run: python run_daily.py
