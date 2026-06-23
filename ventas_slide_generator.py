@@ -611,7 +611,7 @@ def render_table_png(data, rd, out_png, dpi=150):
     tbl=ax.table(cellText=cellText, cellColours=cellColours, colWidths=colW, cellLoc='center', loc='center')
     tbl.auto_set_font_size(False)
     for (r,c),cell in tbl.get_celld().items():
-        cell.set_height(1.0/nrows); cell.set_edgecolor("#9DB4CC"); cell.set_linewidth(0.5)
+        cell.set_height(1.0/nrows); cell.set_edgecolor("white"); cell.set_linewidth(2.2)
         t=cell.get_text()
         if r==0:
             t.set_color("white"); t.set_fontweight("bold"); t.set_fontsize(12)
