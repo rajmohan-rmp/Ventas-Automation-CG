@@ -365,7 +365,7 @@ def make_chart(title, rows, col_bars, col_line, tmp_dir, report_date=None, palet
                          ha='center',color='white',fontsize=11,fontweight='bold')
 
     ax.set_xticks(x)
-    ax.set_xticklabels([_short(d) for d in dates],color='white',fontsize=11,rotation=20,ha='right')
+    ax.set_xticklabels([_short(d) for d in dates],color='white',fontsize=11,rotation=0,ha='center')
     ax.tick_params(colors='white'); ax.set_yticks([]); ax2.set_yticks([])
     ax2.tick_params(colors='white'); ax.spines[:].set_visible(False); ax2.spines[:].set_visible(False)
     ax.set_title(title,color='white',fontsize=13,fontweight='bold',pad=8)
@@ -376,13 +376,13 @@ def make_chart(title, rows, col_bars, col_line, tmp_dir, report_date=None, palet
     handles=[plt.Rectangle((0,0),1,1,color=c) for c in colors]
     handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=2,marker='o',ms=4)]
     ax.legend(handles,list(col_bars)+["Total"],
-              loc='upper center',bbox_to_anchor=(0.5,-0.06),
+              loc='upper center',bbox_to_anchor=(0.5,-0.12),
               facecolor=CHART_BG,edgecolor='none',labelcolor='white',
               fontsize=8,ncol=n+1,framealpha=0.5,
               handlelength=1.0,handleheight=0.8,borderpad=0.4,columnspacing=0.8)
 
     plt.tight_layout(pad=0.4)
-    plt.subplots_adjust(bottom=0.16)
+    plt.subplots_adjust(bottom=0.20)
     path=tmp_dir/f"{title.replace(' ','_')}.png"
     fig.savefig(str(path),dpi=200,bbox_inches='tight',facecolor=CHART_BG)
     plt.close(fig)
@@ -424,7 +424,7 @@ def _draw_chart_ax(ax, title, rows, col_bars, col_line, report_date=None, palett
     for xi,vv in zip(x,line_data):
         if vv>0:
             ax2.annotate(str(vv),(xi,vv),textcoords="offset points",xytext=(0,5),ha='center',color='white',fontsize=8,fontweight='bold')
-    ax.set_xticks(x); ax.set_xticklabels([_short(d) for d in dates],color='white',fontsize=8,rotation=20,ha='right')
+    ax.set_xticks(x); ax.set_xticklabels([_short(d) for d in dates],color='white',fontsize=8,rotation=0,ha='center')
     ax.tick_params(colors='white'); ax.set_yticks([]); ax2.set_yticks([])
     ax2.tick_params(colors='white'); ax.spines[:].set_visible(False); ax2.spines[:].set_visible(False)
     ax.set_title(title,color='white',fontsize=11,fontweight='bold',pad=6)
@@ -432,7 +432,7 @@ def _draw_chart_ax(ax, title, rows, col_bars, col_line, report_date=None, palett
     ax.set_ylim(0,ylim_top/0.9); ax2.set_ylim(0,ylim_top)
     handles=[plt.Rectangle((0,0),1,1,color=c) for c in colors]
     handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=2,marker='o',ms=4)]
-    ax.legend(handles,list(col_bars)+["Total"],loc='upper center',bbox_to_anchor=(0.5,-0.08),
+    ax.legend(handles,list(col_bars)+["Total"],loc='upper center',bbox_to_anchor=(0.5,-0.22),
               facecolor=CHART_BG,edgecolor='none',labelcolor='white',fontsize=6.5,ncol=n+1,framealpha=0.5,
               handlelength=1.0,handleheight=0.8,borderpad=0.3,columnspacing=0.6)
 
@@ -486,7 +486,7 @@ def render_dashboard_png(data, report_date, out_png, dpi=150):
         y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,td); y=y-tile_h-rg
         bg.text(x0+g,y-rowlabel_h/2,"LAST DAY",ha="left",va="center",color="white",fontsize=7,fontweight="bold",zorder=3)
         y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,ld)
-    cb_bottom=0.10; cb_h=0.35
+    cb_bottom=0.135; cb_h=0.315
     for i,(title,rows,bars,line,palette) in enumerate(chart_specs):
         x0=M+i*(colw+M)+0.012
         ax=fig.add_axes([x0,cb_bottom,colw-0.024,cb_h])
