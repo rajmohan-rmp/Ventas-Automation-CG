@@ -137,7 +137,7 @@ def get_creds():
     creds = None
     if TOKEN_FILE.exists():
         try:
-            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+            creds = Credentials.from_authorized_user_info(info)
         except (ValueError, KeyError) as e:
             print("ERROR: token_ventas.json is unreadable/corrupted (%s)." % e)
             print("Fix: re-run one-time sign-in ->  python run_daily.py --auth")
