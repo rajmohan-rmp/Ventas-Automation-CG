@@ -1,31 +1,23 @@
-name: Ventas Daily Dashboard
+name: Airtel KE Mail Dashboard
 
 # 10:00 IST = 04:30 UTC. GitHub cron is always UTC.
 on:
   schedule:
-    - cron: "30 0 * * *"
-  workflow_dispatch: {}        # adds a manual "Run workflow" button
+    - cron: "30 4 * * *"
+  workflow_dispatch: {}
 
 jobs:
   send-dashboard:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
-        run: pip install -r cloudrun/requirements.txt
-
-      - name: Run Ventas pipeline (fetch -> build -> Drive -> email)
+        run: pip install -r requirements.txt
+      - name: Run pipeline (recipients/subject/query from config.yaml)
         env:
-          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}     # contents of token_ventas.json
-          MAIL_TO: "raj.mohan@6dtech.co.in"
-          MAIL_CC: "hari.krishnan@6dtech.co.in,parvath.karthik@6dtech.co.in,abhinav.krishnan@6dtech.co.in,rajneesh.singh@6dtech.co.in,narendhar.singh@6dtech.co.in,chandrakantbharat.korukonda@6dtech.co.in,k.chaitanya@6dtech.co.in,shivaprasad.thalari@6dtech.co.in"
-          MAIL_BCC: ""
+          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}   # contents of token_ventas.json
           VENTAS_WORKDIR: ${{ runner.temp }}
         run: python run_daily.py
