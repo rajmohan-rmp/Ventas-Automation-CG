@@ -7,7 +7,7 @@
 # --- Source email (the daily report the automation reads) -------------------
 gmail:
   # Gmail search that finds the latest source report email.
-  search_query: 'subject:"KE VENTAS REPORT" has:attachment'
+  search_query: 'subject:"CG VENTAS REPORT" has:attachment'
 
 # --- Outgoing email (the dashboard mail the automation sends) ---------------
 email:
@@ -38,8 +38,8 @@ report:
 # (e.g. country: "Congo", country_code: "CG").
 branding:
   title: "VENTAS DAILY DASHBOARD"
-  country: "Kenya"
-  country_code: "KE"
+  country: "Congo"
+  country_code: "CG"
   company: "6D Technologies"
   # customer: optional override. Leave blank to auto-use "Airtel <country> (<code>)".
   customer: ""
