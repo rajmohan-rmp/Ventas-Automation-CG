@@ -70,6 +70,28 @@ COLORS_POOL = [B1,B2,B3,B4,"#E67E22"]
 # Completed=light green, InProgress=light orange, Pending=red; extra slots for ST
 STACK_COLORS= ["#2ECC71","#F39C12","#E74C3C","#9B59B6","#3498DB"]
 
+# ── Branding: single source of the operator name (config.yaml) ───────────────
+def load_config():
+    """Read config.yaml sitting next to this script (empty dict if absent)."""
+    try:
+        import yaml
+        return yaml.safe_load((Path(__file__).parent/"config.yaml").read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+def customer_name(cfg=None):
+    """The operator display name, derived from branding.country / country_code
+    (single place). An explicit branding.customer overrides. e.g. 'Airtel Kenya (KE)'."""
+    b=((cfg or load_config()).get("branding") or {})
+    if b.get("customer"): return str(b["customer"]).strip()
+    country=str(b.get("country","")).strip()
+    code=str(b.get("country_code","")).strip()
+    if country and code: return f"Airtel {country} ({code})"
+    if country: return f"Airtel {country}"
+    return "Airtel"
+
+CUSTOMER = customer_name()
+
 # ── Parsing ───────────────────────────────────────────────────────────────────
 def parse_html(html):
     soup = BeautifulSoup(html,"html.parser")
@@ -460,7 +482,7 @@ def render_dashboard_png(data, report_date, out_png, dpi=150):
     bg=fig.add_axes([0,0,1,1]); bg.set_axis_off(); bg.set_xlim(0,1); bg.set_ylim(0,1)
     bg.add_patch(Rectangle((0,0.92),1,0.08,color="#0E518C",zorder=1))
     bg.text(0.015,0.965,"VENTAS DAILY DASHBOARD",ha="left",va="center",color="white",fontsize=20,fontweight="bold",zorder=3)
-    bg.text(0.015,0.933,"Report Date: %s    |    Airtel Kenya (KE)    |    Last 7 Days Trend"%_short_date_long(rd),
+    bg.text(0.015,0.933,"Report Date: %s    |    %s    |    Last 7 Days Trend"%(_short_date_long(rd),CUSTOMER),
             ha="left",va="center",color="#B0C4DE",fontsize=9.5,zorder=3)
     bg.text(0.985,0.96,"6D Technologies",ha="right",va="center",color="white",fontsize=13,fontweight="bold",zorder=3)
     M=0.015; colw=(1-4*M)/3; ptop=0.90
@@ -602,7 +624,7 @@ def render_table_png(data, rd, out_png, dpi=150):
 
     fig=plt.figure(figsize=(13.333,7.5),dpi=dpi); fig.patch.set_facecolor("#06224A")
     fig.text(0.012,0.965,"Weekly Transaction Trend Report",color="white",fontsize=21,fontweight="bold",ha="left",va="center")
-    fig.text(0.012,0.933,"Airtel Kenya (KE)    |    Report Date: %s    |    Last 7 Days (excl. report day)"%_short_date_long(rd),
+    fig.text(0.012,0.933,"%s    |    Report Date: %s    |    Last 7 Days (excl. report day)"%(CUSTOMER,_short_date_long(rd)),
              color="#B0C4DE",fontsize=10,ha="left",va="center")
     fig.text(0.988,0.95,"6D Technologies",color="white",fontsize=13,fontweight="bold",ha="right",va="center")
     ax=fig.add_axes([0.008,0.02,0.984,0.88]); ax.axis("off")
@@ -639,7 +661,7 @@ def add_trend_table_slide(prs, data, rd):
     if bp.exists(): slide.shapes.add_picture(str(bp),0,0,SW,HDR_H)
     else: _rect(slide,0,0,SW,HDR_H,fc=CARD_BLUE)
     _txt(slide,"Weekly Transaction Trend Report",Inches(0.25),Inches(0.08),Inches(10),Inches(0.4),sz=20,bold=True)
-    _txt(slide,f"Airtel Kenya (KE)   |   Report Date: {_short_date_long(rd)}   |   Last 7 Days (excl. report day)",
+    _txt(slide,f"{CUSTOMER}   |   Report Date: {_short_date_long(rd)}   |   Last 7 Days (excl. report day)",
          Inches(0.25),Inches(0.40),Inches(10),Inches(0.18),sz=8.5,col=LGREY)
     lg=_asset("6d-logo-white.png")
     if lg.exists():
@@ -777,7 +799,7 @@ def generate_slide(html_list, report_date, output_path, data=None, png_path=None
 
         _txt(slide,"VENTAS DAILY DASHBOARD",
              Inches(0.25),Inches(0.05),Inches(9),Inches(0.34),sz=20,bold=True)
-        _txt(slide,f"Report Date: {_short_date_long(rd)}   |   Airtel Kenya (KE)   |   Last 7 Days Trend",
+        _txt(slide,f"Report Date: {_short_date_long(rd)}   |   {CUSTOMER}   |   Last 7 Days Trend",
              Inches(0.25),Inches(0.38),Inches(9),Inches(0.20),sz=8.5,col=LGREY)
         lg=_asset("6d-logo-white.png")
         if lg.exists():

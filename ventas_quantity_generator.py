@@ -82,7 +82,7 @@ def render_png(data, report_date, out_png, dpi=150):
     CARD="#0E3A6E"; INK="white"; SUB="#9FB6D6"; GRID="#2C4E7A"; UP="#2ECC71"; DOWN="#E74C3C"
     dates=_window(report_date)
     short=lambda d: datetime.strptime(d,"%Y-%m-%d").strftime("%d-%b")
-    customer=(_cfg().get("branding",{}) or {}).get("customer","")
+    customer=G.customer_name(_cfg())   # single source: branding.country / country_code
     x=np.arange(len(dates))
     fig=plt.figure(figsize=(13.333,7.5),dpi=dpi); fig.patch.set_facecolor(BG)
     bg=fig.add_axes([0,0,1,1]); bg.set_axis_off(); bg.set_xlim(0,1); bg.set_ylim(0,1)

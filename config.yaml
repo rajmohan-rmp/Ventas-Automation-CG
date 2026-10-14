@@ -13,11 +13,12 @@ gmail:
 email:
   to:
     - raj.mohan@6dtech.co.in
-  cc: []
-    #- hari.krishnan@6dtech.co.in,parvath.karthik@6dtech.co.in,abhinav.krishnan@6dtech.co.in,rajneesh.singh@6dtech.co.in,narendhar.singh@6dtech.co.in,chandrakantbharat.korukonda@6dtech.co.in,k.chaitanya@6dtech.co.in,shivaprasad.thalari@6dtech.co.in
+  cc:
+    - hari.krishnan@6dtech.co.in
   bcc: []
-  # {report_date} is filled automatically (YYYY-MM-DD).
-  subject_template: "Ventas Daily Dashboard | Airtel Kenya (KE) | {report_date} (Last 7 Days)"
+  # {report_date} and {customer} are filled automatically. {customer} comes from
+  # branding.country / branding.country_code below, so you don't repeat the name here.
+  subject_template: "Ventas Daily Dashboard | {customer} | {report_date} (Last 7 Days)"
 
 # --- Google Drive upload ----------------------------------------------------
 drive:
@@ -30,10 +31,18 @@ report:
   exclude_report_day: true  # window ends the day BEFORE the report date
 
 # --- Branding shown on the slides -------------------------------------------
+# Country + country_code are the SINGLE place that sets the operator name.
+# Everything (slides, quantity deck, email body, subject) shows
+# "Airtel <country> (<country_code>)" derived from these two values.
+# To re-point the whole setup at another operator, change ONLY these two lines
+# (e.g. country: "Congo", country_code: "CG").
 branding:
   title: "VENTAS DAILY DASHBOARD"
-  customer: "Airtel Kenya (KE)"
+  country: "Kenya"
+  country_code: "KE"
   company: "6D Technologies"
+  # customer: optional override. Leave blank to auto-use "Airtel <country> (<code>)".
+  customer: ""
 
 # --- OAuth (do not change unless you know why) ------------------------------
 oauth:

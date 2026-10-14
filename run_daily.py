@@ -68,6 +68,18 @@ _EMAIL   = CONFIG.get("email", {}) or {}
 _GMAIL   = CONFIG.get("gmail", {}) or {}
 _DRIVE   = CONFIG.get("drive", {}) or {}
 _OAUTH   = CONFIG.get("oauth", {}) or {}
+_BRAND   = CONFIG.get("branding", {}) or {}
+
+def _customer():
+    """Operator display name from the single place (branding.country / country_code).
+    branding.customer overrides if set. e.g. 'Airtel Kenya (KE)'."""
+    if str(_BRAND.get("customer","")).strip(): return str(_BRAND["customer"]).strip()
+    c=str(_BRAND.get("country","")).strip(); cc=str(_BRAND.get("country_code","")).strip()
+    if c and cc: return f"Airtel {c} ({cc})"
+    if c: return f"Airtel {c}"
+    return "Airtel"
+
+CUSTOMER = _customer()
 GOOGLE_HOSTS = ["oauth2.googleapis.com", "gmail.googleapis.com", "www.googleapis.com"]
 SCOPES     = _OAUTH.get("scopes") or ["https://www.googleapis.com/auth/gmail.readonly",
               "https://www.googleapis.com/auth/gmail.send",
@@ -80,7 +92,7 @@ DRIVE_ENABLED   = bool(_DRIVE.get("upload", True))
 DEFAULT_TO = ",".join(_EMAIL.get("to", [])) or "raj.mohan@6dtech.co.in"
 DEFAULT_CC = ",".join(_EMAIL.get("cc", []))
 DEFAULT_BCC = ",".join(_EMAIL.get("bcc", []))
-SUBJECT_TMPL = _EMAIL.get("subject_template", "Ventas Daily Dashboard | Airtel Kenya (KE) | {report_date} (Last 7 Days)")
+SUBJECT_TMPL = _EMAIL.get("subject_template", "Ventas Daily Dashboard | {customer} | {report_date} (Last 7 Days)")
 DEFAULT_QUERY = _GMAIL.get("search_query", 'subject:"VENTAS REPORT" has:attachment')
 GENERATOR  = HERE / "ventas_slide_generator.py"
 WORKDIR    = Path(os.environ.get("VENTAS_WORKDIR", str(HERE)))   # writable dir (Cloud Run: /tmp)
@@ -423,7 +435,7 @@ def _email_html(report_date, drive_link=None, images=None):
     return f"""\
 <div style="font-family:Arial,sans-serif;color:#0A2A57;">
   <h2 style="color:#0E518C;margin-bottom:4px;">Ventas Daily Dashboard</h2>
-  <p style="margin:2px 0;color:#444;">Airtel Kenya (KE) &nbsp;|&nbsp; Report date {report_date} &nbsp;|&nbsp; Last 7 days (excl. report day)</p>
+  <p style="margin:2px 0;color:#444;">{CUSTOMER} &nbsp;|&nbsp; Report date {report_date} &nbsp;|&nbsp; Last 7 days (excl. report day)</p>
   <p>Please find the Ventas USDM 2.0 daily report below. The editable deck is attached.</p>
   {blocks}
   {link}
@@ -491,7 +503,7 @@ def main():
     to_list  = [a.strip() for a in args.to.split(",")  if a.strip()]
     cc_list  = [a.strip() for a in args.cc.split(",")  if a.strip()]
     bcc_list = [a.strip() for a in args.bcc.split(",") if a.strip()]
-    subject = SUBJECT_TMPL.format(report_date=report_date)
+    subject = SUBJECT_TMPL.format(report_date=report_date, customer=CUSTOMER)
     html = _email_html(report_date, drive_link, images=[(c,l) for c,l,_ in images])
     send_email(gmail, to_list, subject, html, out, cc_list, bcc_list,
                inline_imgs=[(c,p) for c,_,p in images])
