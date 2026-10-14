@@ -7,7 +7,7 @@
 # --- Source email (the daily report the automation reads) -------------------
 gmail:
   # Gmail search that finds the latest source report email.
-  search_query: 'from:noreply.airtelkenya.com has:attachment'
+  search_query: 'subject:"KE VENTAS REPORT" has:attachment'
 
 # --- Outgoing email (the dashboard mail the automation sends) ---------------
 email:
