@@ -1,4 +1,4 @@
-name: Airtel KE Mail Dashboard
+name: Airtel CG Mail Dashboard
 
 # 10:00 IST = 04:30 UTC. GitHub cron is always UTC.
 on:
