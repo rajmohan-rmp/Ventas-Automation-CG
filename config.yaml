@@ -14,7 +14,7 @@ email:
   to:
     - raj.mohan@6dtech.co.in
   cc:
-    - hari.krishnan@6dtech.co.in
+    - hari.krishnan@6dtech.co.in,parvath.karthik@6dtech.co.in,abhinav.krishnan@6dtech.co.in,rajneesh.singh@6dtech.co.in,narendhar.singh@6dtech.co.in,chandrakantbharat.korukonda@6dtech.co.in,k.chaitanya@6dtech.co.in,shivaprasad.thalari@6dtech.co.in
   bcc: []
   # {report_date} and {customer} are filled automatically. {customer} comes from
   # branding.country / branding.country_code below, so you don't repeat the name here.
