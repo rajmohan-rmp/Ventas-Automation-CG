@@ -1,0 +1,53 @@
+# ============================================================================
+# Airtel KE Mail Dashboard Automation — central configuration
+# Edit THIS file to point the automation at a new mailbox / recipients /
+# subject / Drive folder. All scripts read their settings from here.
+# ============================================================================
+
+# --- Source email (the daily report the automation reads) -------------------
+gmail:
+  # Gmail search that finds the latest source report email.
+  search_query: 'subject:"KE VENTAS REPORT" has:attachment'
+
+# --- Outgoing email (the dashboard mail the automation sends) ---------------
+email:
+  to:
+    - raj.mohan@6dtech.co.in
+  cc: []
+    #- hari.krishnan@6dtech.co.in,parvath.karthik@6dtech.co.in,abhinav.krishnan@6dtech.co.in,rajneesh.singh@6dtech.co.in,narendhar.singh@6dtech.co.in,chandrakantbharat.korukonda@6dtech.co.in,k.chaitanya@6dtech.co.in,shivaprasad.thalari@6dtech.co.in
+  bcc: []
+  # {report_date} is filled automatically (YYYY-MM-DD).
+  subject_template: "Ventas Daily Dashboard | Airtel Kenya (KE) | {report_date} (Last 7 Days)"
+
+# --- Google Drive upload ----------------------------------------------------
+drive:
+  upload: true
+  folder_id: "1mXQKzC-E7qayiCD3o4xP0wRY-1c9RG1U"
+
+# --- Report window ----------------------------------------------------------
+report:
+  window_days: 7          # number of trailing days shown
+  exclude_report_day: true  # window ends the day BEFORE the report date
+
+# --- Branding shown on the slides -------------------------------------------
+branding:
+  title: "VENTAS DAILY DASHBOARD"
+  customer: "Airtel Kenya (KE)"
+  company: "6D Technologies"
+
+# --- OAuth (do not change unless you know why) ------------------------------
+oauth:
+  scopes:
+    - https://www.googleapis.com/auth/gmail.readonly
+    - https://www.googleapis.com/auth/gmail.send
+    - https://www.googleapis.com/auth/drive.file
+
+# --- Where the secret credentials come from (VALUES are NOT stored here) -----
+# The repo must never contain the real token or credentials.json.
+auth:
+  token_env: TOKEN_JSON            # GitHub/CI: repository Secret name holding token_ventas.json contents
+  sa_key_env: SA_KEY_JSON          # optional CI secret name for a service-account key JSON
+  delegated_user: ""               # optional: Workspace mailbox to impersonate (service-account mode)
+  credentials_file: credentials.json   # local OAuth client file (git-ignored)
+  token_file: token_ventas.json        # local token file (git-ignored)
+  secrets_file: secrets.yaml            # optional LOCAL secrets file (git-ignored; see secrets.example.yaml)

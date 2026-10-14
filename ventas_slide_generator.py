@@ -327,13 +327,13 @@ def make_chart(title, rows, col_bars, col_line, tmp_dir, report_date=None, palet
     bar_data={c:[_val(rows,d,c) for d in dates] for c in col_bars}
     line_data=[_val(rows,d,col_line) for d in dates]
 
-    fig,ax=plt.subplots(figsize=(7.5,6.5))  # matches reduced panel aspect ratio
+    fig,ax=plt.subplots(figsize=(7.5,7.3))  # taller so chart fills the slide panel
     fig.patch.set_facecolor(CHART_BG)
     ax.set_facecolor(CHART_BG2)
 
     # Pre-compute ylim so bar label threshold is available during plotting
     ymax_line=max(line_data) if any(v>0 for v in line_data) else 1
-    ylim_top=max(ymax_line*1.2,1)
+    ylim_top=max(ymax_line*1.18,1)
 
     n=len(col_bars)
     colors=(palette or STACK_COLORS)[:n]
@@ -374,17 +374,16 @@ def make_chart(title, rows, col_bars, col_line, tmp_dir, report_date=None, palet
     ax2.set_ylim(0, ylim_top)
 
     handles=[plt.Rectangle((0,0),1,1,color=c) for c in colors]
-    handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=2,marker='o',ms=4)]
+    handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=3,marker='o',ms=6)]
     ax.legend(handles,list(col_bars)+["Total"],
               loc='upper center',bbox_to_anchor=(0.5,-0.12),
               facecolor=CHART_BG,edgecolor='none',labelcolor='white',
-              fontsize=8,ncol=n+1,framealpha=0.5,
-              handlelength=1.0,handleheight=0.8,borderpad=0.4,columnspacing=0.8)
+              fontsize=14,ncol=n+1,framealpha=0.5,
+              handlelength=1.1,handleheight=1.0,borderpad=0.5,columnspacing=0.7)
 
-    plt.tight_layout(pad=0.4)
-    plt.subplots_adjust(bottom=0.20)
+    plt.subplots_adjust(left=0.035,right=0.985,top=0.91,bottom=0.16)
     path=tmp_dir/f"{title.replace(' ','_')}.png"
-    fig.savefig(str(path),dpi=200,bbox_inches='tight',facecolor=CHART_BG)
+    fig.savefig(str(path),dpi=200,facecolor=CHART_BG)
     plt.close(fig)
     return path
 
@@ -403,7 +402,7 @@ def _draw_chart_ax(ax, title, rows, col_bars, col_line, report_date=None, palett
     line_data=[_val(rows,d,col_line) for d in dates]
     ax.set_facecolor(CHART_BG2)
     ymax_line=max(line_data) if any(v>0 for v in line_data) else 1
-    ylim_top=max(ymax_line*1.2,1)
+    ylim_top=max(ymax_line*1.45,1)
     n=len(col_bars); colors=(palette or STACK_COLORS)[:n]
     bottom=np.zeros(len(dates)); bar_w=0.55
     min_seg=max((ylim_top/0.9)*0.05,0.5)
@@ -432,7 +431,7 @@ def _draw_chart_ax(ax, title, rows, col_bars, col_line, report_date=None, palett
     ax.set_ylim(0,ylim_top/0.9); ax2.set_ylim(0,ylim_top)
     handles=[plt.Rectangle((0,0),1,1,color=c) for c in colors]
     handles+=[plt.Line2D([0],[0],color=LYELLOW,lw=2,marker='o',ms=4)]
-    ax.legend(handles,list(col_bars)+["Total"],loc='upper center',bbox_to_anchor=(0.5,-0.22),
+    ax.legend(handles,list(col_bars)+["Total"],loc='upper center',bbox_to_anchor=(0.5,-0.15),
               facecolor=CHART_BG,edgecolor='none',labelcolor='white',fontsize=6.5,ncol=n+1,framealpha=0.5,
               handlelength=1.0,handleheight=0.8,borderpad=0.3,columnspacing=0.6)
 
@@ -461,7 +460,7 @@ def render_dashboard_png(data, report_date, out_png, dpi=150):
     bg=fig.add_axes([0,0,1,1]); bg.set_axis_off(); bg.set_xlim(0,1); bg.set_ylim(0,1)
     bg.add_patch(Rectangle((0,0.92),1,0.08,color="#0E518C",zorder=1))
     bg.text(0.015,0.965,"VENTAS DAILY DASHBOARD",ha="left",va="center",color="white",fontsize=20,fontweight="bold",zorder=3)
-    bg.text(0.015,0.933,"Report Date: %s    |    Airtel Congo (CG)    |    Last 7 Days Trend"%_short_date_long(rd),
+    bg.text(0.015,0.933,"Report Date: %s    |    Airtel Kenya (KE)    |    Last 7 Days Trend"%_short_date_long(rd),
             ha="left",va="center",color="#B0C4DE",fontsize=9.5,zorder=3)
     bg.text(0.985,0.96,"6D Technologies",ha="right",va="center",color="white",fontsize=13,fontweight="bold",zorder=3)
     M=0.015; colw=(1-4*M)/3; ptop=0.90
@@ -486,7 +485,7 @@ def render_dashboard_png(data, report_date, out_png, dpi=150):
         y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,td); y=y-tile_h-rg
         bg.text(x0+g,y-rowlabel_h/2,"LAST DAY",ha="left",va="center",color="white",fontsize=7,fontweight="bold",zorder=3)
         y=y-rowlabel_h; row_tiles(x0+g,y-tile_h,colw-2*g,tile_h,ld)
-    cb_bottom=0.135; cb_h=0.315
+    cb_bottom=0.135; cb_h=0.41
     for i,(title,rows,bars,line,palette) in enumerate(chart_specs):
         x0=M+i*(colw+M)+0.012
         ax=fig.add_axes([x0,cb_bottom,colw-0.024,cb_h])
@@ -603,7 +602,7 @@ def render_table_png(data, rd, out_png, dpi=150):
 
     fig=plt.figure(figsize=(13.333,7.5),dpi=dpi); fig.patch.set_facecolor("#06224A")
     fig.text(0.012,0.965,"Weekly Transaction Trend Report",color="white",fontsize=21,fontweight="bold",ha="left",va="center")
-    fig.text(0.012,0.933,"Airtel Congo (CG)    |    Report Date: %s    |    Last 7 Days (excl. report day)"%_short_date_long(rd),
+    fig.text(0.012,0.933,"Airtel Kenya (KE)    |    Report Date: %s    |    Last 7 Days (excl. report day)"%_short_date_long(rd),
              color="#B0C4DE",fontsize=10,ha="left",va="center")
     fig.text(0.988,0.95,"6D Technologies",color="white",fontsize=13,fontweight="bold",ha="right",va="center")
     ax=fig.add_axes([0.008,0.02,0.984,0.88]); ax.axis("off")
@@ -640,7 +639,7 @@ def add_trend_table_slide(prs, data, rd):
     if bp.exists(): slide.shapes.add_picture(str(bp),0,0,SW,HDR_H)
     else: _rect(slide,0,0,SW,HDR_H,fc=CARD_BLUE)
     _txt(slide,"Weekly Transaction Trend Report",Inches(0.25),Inches(0.08),Inches(10),Inches(0.4),sz=20,bold=True)
-    _txt(slide,f"Airtel Congo (CG)   |   Report Date: {_short_date_long(rd)}   |   Last 7 Days (excl. report day)",
+    _txt(slide,f"Airtel Kenya (KE)   |   Report Date: {_short_date_long(rd)}   |   Last 7 Days (excl. report day)",
          Inches(0.25),Inches(0.40),Inches(10),Inches(0.18),sz=8.5,col=LGREY)
     lg=_asset("6d-logo-white.png")
     if lg.exists():
@@ -778,7 +777,7 @@ def generate_slide(html_list, report_date, output_path, data=None, png_path=None
 
         _txt(slide,"VENTAS DAILY DASHBOARD",
              Inches(0.25),Inches(0.05),Inches(9),Inches(0.34),sz=20,bold=True)
-        _txt(slide,f"Report Date: {_short_date_long(rd)}   |   Airtel Congo (CG)   |   Last 7 Days Trend",
+        _txt(slide,f"Report Date: {_short_date_long(rd)}   |   Airtel Kenya (KE)   |   Last 7 Days Trend",
              Inches(0.25),Inches(0.38),Inches(9),Inches(0.20),sz=8.5,col=LGREY)
         lg=_asset("6d-logo-white.png")
         if lg.exists():
@@ -838,21 +837,22 @@ def generate_slide(html_list, report_date, output_path, data=None, png_path=None
                  [CARD_GREY,CARD_TEAL,CARD_RED])
 
         # ── Charts (3 panels) ─────────────────────────────────────────────────
-        CY=KY+KH+Inches(0.10); CH=(SH-CY-Inches(0.20))*0.80; CW=(SW-4*M)/3
+        CY=KY+KH+Inches(0.10); CH=(SH-CY-Inches(0.20))*0.96; CW=(SW-4*M)/3
         _rect(slide,M,            CY,CW,CH,fc=PANEL,rx=0.04)
         _rect(slide,M+CW+M,       CY,CW,CH,fc=PANEL,rx=0.04)
         _rect(slide,M+2*(CW+M),   CY,CW,CH,fc=PANEL,rx=0.04)
 
         PAD=Inches(0.12)
+        PICH=int(CH-2*PAD)
         if pri_chart.exists():
             slide.shapes.add_picture(str(pri_chart),
-                int(M+PAD),int(CY+PAD),width=int(CW-2*PAD))
+                int(M+PAD),int(CY+PAD),width=int(CW-2*PAD),height=PICH)
         if pos_chart.exists():
             slide.shapes.add_picture(str(pos_chart),
-                int(M+CW+M+PAD),int(CY+PAD),width=int(CW-2*PAD))
+                int(M+CW+M+PAD),int(CY+PAD),width=int(CW-2*PAD),height=PICH)
         if st_chart.exists():
             slide.shapes.add_picture(str(st_chart),
-                int(M+2*(CW+M)+PAD),int(CY+PAD),width=int(CW-2*PAD))
+                int(M+2*(CW+M)+PAD),int(CY+PAD),width=int(CW-2*PAD),height=PICH)
 
         # ── Footer ───────────────────────────────────────────────────────────
         _rect(slide,0,SH-Inches(0.27),SW,Inches(0.27),fc=CARD_BLUE)

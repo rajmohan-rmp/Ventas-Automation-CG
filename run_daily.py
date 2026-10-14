@@ -45,15 +45,43 @@ from email.mime.image import MIMEImage
 from email import encoders
 
 HERE       = Path(__file__).parent
+
+def _load_config():
+    """Load config.yaml (all shareable settings live there)."""
+    cfg_path = HERE / "config.yaml"
+    if not cfg_path.exists():
+        return {}
+    try:
+        import yaml
+    except ImportError:
+        import subprocess
+        subprocess.check_call([sys.executable,"-m","pip","install","pyyaml","-q"])
+        import yaml
+    try:
+        return yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    except Exception as e:
+        print("WARN: could not parse config.yaml (%s); using built-in defaults." % e)
+        return {}
+
+CONFIG   = _load_config()
+_EMAIL   = CONFIG.get("email", {}) or {}
+_GMAIL   = CONFIG.get("gmail", {}) or {}
+_DRIVE   = CONFIG.get("drive", {}) or {}
+_OAUTH   = CONFIG.get("oauth", {}) or {}
 GOOGLE_HOSTS = ["oauth2.googleapis.com", "gmail.googleapis.com", "www.googleapis.com"]
-SCOPES     = ["https://www.googleapis.com/auth/gmail.readonly",
+SCOPES     = _OAUTH.get("scopes") or ["https://www.googleapis.com/auth/gmail.readonly",
               "https://www.googleapis.com/auth/gmail.send",
               "https://www.googleapis.com/auth/drive.file"]
-CREDS_FILE = HERE / "credentials.json"
-TOKEN_FILE = HERE / "token_ventas.json"
-DRIVE_FOLDER_ID = "1yCgVqztLDc79kACnyA4y5WYQIGOEuEaj"
-DEFAULT_TO = "raj.mohan@6dtech.co.in"
-DEFAULT_QUERY = 'subject:"CG VENTAS REPORT" has:attachment'
+_AUTH      = CONFIG.get("auth", {}) or {}
+CREDS_FILE = HERE / _AUTH.get("credentials_file", "credentials.json")
+TOKEN_FILE = HERE / _AUTH.get("token_file", "token_ventas.json")
+DRIVE_FOLDER_ID = _DRIVE.get("folder_id", "1yKEVqztLDc79kACnyA4y5WYQIGOEuEaj")
+DRIVE_ENABLED   = bool(_DRIVE.get("upload", True))
+DEFAULT_TO = ",".join(_EMAIL.get("to", [])) or "raj.mohan@6dtech.co.in"
+DEFAULT_CC = ",".join(_EMAIL.get("cc", []))
+DEFAULT_BCC = ",".join(_EMAIL.get("bcc", []))
+SUBJECT_TMPL = _EMAIL.get("subject_template", "Ventas Daily Dashboard | Airtel Kenya (KE) | {report_date} (Last 7 Days)")
+DEFAULT_QUERY = _GMAIL.get("search_query", 'subject:"VENTAS REPORT" has:attachment')
 GENERATOR  = HERE / "ventas_slide_generator.py"
 WORKDIR    = Path(os.environ.get("VENTAS_WORKDIR", str(HERE)))   # writable dir (Cloud Run: /tmp)
 ENV_TO     = os.environ.get("MAIL_TO",  "")
@@ -92,33 +120,45 @@ def _looks_like_network(exc):
                                 "name or service", "transporterror", "403 forbidden"))
 
 
-def _creds_from_env():
-    """Unattended credentials from environment (Cloud Run / Secret Manager).
+def _load_secrets_file():
+    """Optional LOCAL secrets (git-ignored). Never commit this file."""
+    fp = HERE / _AUTH.get("secrets_file", "secrets.yaml")
+    if not fp.exists():
+        return {}
+    try:
+        import yaml
+        return yaml.safe_load(fp.read_text(encoding="utf-8")) or {}
+    except Exception as e:
+        print("WARN: could not read %s (%s)" % (fp.name, e)); return {}
 
-    Priority:
-      1. Service account + domain-wide delegation:
-         SA_KEY_JSON (service-account key JSON) + GMAIL_DELEGATED_USER (mailbox to impersonate)
-      2. User OAuth token JSON in TOKEN_JSON (content of token_ventas.json)
-    Returns Credentials or None (fall back to local-file flow).
-    """
+def _creds_from_env():
+    """Unattended credentials. Order: CI env vars -> local secrets.yaml.
+    Secret NAMES/paths come from config.yaml 'auth'; secret VALUES are never
+    stored in the repo."""
     import json
-    sa_key = os.environ.get("SA_KEY_JSON")
-    subject = os.environ.get("GMAIL_DELEGATED_USER")
+    sec = _load_secrets_file()
+    token_env = _AUTH.get("token_env", "TOKEN_JSON")
+    sa_env    = _AUTH.get("sa_key_env", "SA_KEY_JSON")
+    sa_key  = os.environ.get(sa_env) or sec.get("sa_key_json")
+    subject = (os.environ.get("GMAIL_DELEGATED_USER") or sec.get("delegated_user")
+               or _AUTH.get("delegated_user") or "")
     if sa_key and subject:
         from google.oauth2 import service_account
-        info = json.loads(sa_key)
+        info = sa_key if isinstance(sa_key, dict) else json.loads(sa_key)
         creds = service_account.Credentials.from_service_account_info(
             info, scopes=SCOPES).with_subject(subject)
         print("Auth: service account + domain-wide delegation as", subject)
         return creds
-    token_json = os.environ.get("TOKEN_JSON")
+    token_json = os.environ.get(token_env) or sec.get("token_json")
     if token_json:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+        info = token_json if isinstance(token_json, dict) else json.loads(token_json)
+        creds = Credentials.from_authorized_user_info(info)   # use token's own granted scopes
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-        print("Auth: user OAuth token from environment")
+        print("Auth: user OAuth token from %s" %
+              (token_env if os.environ.get(token_env) else "secrets.yaml"))
         return creds
     return None
 
@@ -137,7 +177,7 @@ def get_creds():
     creds = None
     if TOKEN_FILE.exists():
         try:
-            creds = Credentials.from_authorized_user_info(info)
+            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))   # use token's own granted scopes
         except (ValueError, KeyError) as e:
             print("ERROR: token_ventas.json is unreadable/corrupted (%s)." % e)
             print("Fix: re-run one-time sign-in ->  python run_daily.py --auth")
@@ -160,7 +200,7 @@ def get_creds():
                 print(f"ERROR: {CREDS_FILE} not found.")
                 sys.exit(1)
             flow = InstalledAppFlow.from_client_secrets_file(str(CREDS_FILE), SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
         TOKEN_FILE.write_text(creds.to_json())
         print(f"Token saved to {TOKEN_FILE}")
     return creds
@@ -301,6 +341,28 @@ def generate(csv_paths, report_date, out_path, png_path=None, table_png_path=Non
     return out_path
 
 
+# -- 2b. append the log-scale QUANTITY slide into the main deck (single merged file) --
+QTY_GENERATOR = HERE / "ventas_quantity_generator.py"
+
+def append_quantity_slide(csv_paths, report_date, deck_path, png_path=None):
+    """Append the log-scale quantity slide as the last slide of the main deck,
+    producing one merged .pptx. Returns True on success, False if skipped."""
+    if not QTY_GENERATOR.exists():
+        print("WARN: ventas_quantity_generator.py not found; skipping quantity slide.")
+        return False
+    args = [sys.executable, str(QTY_GENERATOR), "--csv-file"] + [str(p) for p in csv_paths]
+    args += ["--date", report_date, "--append-to", str(deck_path)]
+    if png_path:
+        args += ["--png", str(png_path)]
+    print("Appending quantity slide:", " ".join(args))
+    try:
+        subprocess.check_call(args, cwd=str(HERE))
+        return True
+    except Exception as e:
+        print(f"WARN: quantity slide append failed ({e}); continuing with main deck only.")
+        return False
+
+
 # -- 3. drive upload --
 def upload_drive(creds, path, folder_id=DRIVE_FOLDER_ID):
     from googleapiclient.http import MediaFileUpload
@@ -316,7 +378,7 @@ def upload_drive(creds, path, folder_id=DRIVE_FOLDER_ID):
 
 # -- 4. send email (inline slide image + pptx attachment) --
 def send_email(gmail, to_list, subject, html, attach_path,
-               cc_list=None, bcc_list=None, inline_imgs=None):
+               cc_list=None, bcc_list=None, inline_imgs=None, extra_attachments=None):
     outer = MIMEMultipart("mixed")
     outer["to"] = ", ".join(to_list)
     if cc_list:
@@ -335,11 +397,14 @@ def send_email(gmail, to_list, subject, html, attach_path,
             related.attach(img)
     outer.attach(related)
 
-    part = MIMEBase(*MIME_PPTX.split("/"))
-    part.set_payload(Path(attach_path).read_bytes())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", "attachment", filename=Path(attach_path).name)
-    outer.attach(part)
+    for ap in [attach_path] + list(extra_attachments or []):
+        if not ap or not Path(ap).exists():
+            continue
+        part = MIMEBase(*MIME_PPTX.split("/"))
+        part.set_payload(Path(ap).read_bytes())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", "attachment", filename=Path(ap).name)
+        outer.attach(part)
 
     raw = base64.urlsafe_b64encode(outer.as_bytes()).decode()
     sent = gmail.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -358,7 +423,7 @@ def _email_html(report_date, drive_link=None, images=None):
     return f"""\
 <div style="font-family:Arial,sans-serif;color:#0A2A57;">
   <h2 style="color:#0E518C;margin-bottom:4px;">Ventas Daily Dashboard</h2>
-  <p style="margin:2px 0;color:#444;">Airtel Congo (CG) &nbsp;|&nbsp; Report date {report_date} &nbsp;|&nbsp; Last 7 days (excl. report day)</p>
+  <p style="margin:2px 0;color:#444;">Airtel Kenya (KE) &nbsp;|&nbsp; Report date {report_date} &nbsp;|&nbsp; Last 7 days (excl. report day)</p>
   <p>Please find the Ventas USDM 2.0 daily report below. The editable deck is attached.</p>
   {blocks}
   {link}
@@ -370,8 +435,8 @@ def main():
     ap = argparse.ArgumentParser(description="Ventas daily dashboard pipeline")
     ap.add_argument("--auth", action="store_true")
     ap.add_argument("--to", default=ENV_TO or DEFAULT_TO)
-    ap.add_argument("--cc", default=ENV_CC)
-    ap.add_argument("--bcc", default=ENV_BCC)
+    ap.add_argument("--cc", default=ENV_CC or DEFAULT_CC)
+    ap.add_argument("--bcc", default=ENV_BCC or DEFAULT_BCC)
     ap.add_argument("--no-drive", action="store_true")
     ap.add_argument("--no-image", action="store_true")
     ap.add_argument("--date", default="")
@@ -402,6 +467,12 @@ def main():
              png_path=(None if args.no_image else png1),
              table_png_path=(None if args.no_image else png2))
 
+    # Merge the log-scale quantity slide into the main deck as the last slide, so the
+    # email carries ONE .pptx. The quantity slide is intentionally NOT embedded in the
+    # mail body (only the first two slide images are shown inline below).
+    qty_png = WORKDIR / f"Ventas_Quantity_{report_date}_slide.png"
+    append_quantity_slide(csvs, report_date, out, png_path=qty_png)
+
     images = []        # (cid, label, path) for inline embedding
     if not args.no_image:
         if not png1.exists():
@@ -411,7 +482,7 @@ def main():
         print("Inline images:", [str(p) for _,_,p in images])
 
     drive_link = None
-    if not args.no_drive:
+    if not args.no_drive and DRIVE_ENABLED:
         try:
             drive_link = upload_drive(creds, out)
         except Exception as e:
@@ -420,7 +491,7 @@ def main():
     to_list  = [a.strip() for a in args.to.split(",")  if a.strip()]
     cc_list  = [a.strip() for a in args.cc.split(",")  if a.strip()]
     bcc_list = [a.strip() for a in args.bcc.split(",") if a.strip()]
-    subject = f"Ventas Daily Dashboard | Airtel Congo (CG) | {report_date} (Last 7 Days)"
+    subject = SUBJECT_TMPL.format(report_date=report_date)
     html = _email_html(report_date, drive_link, images=[(c,l) for c,l,_ in images])
     send_email(gmail, to_list, subject, html, out, cc_list, bcc_list,
                inline_imgs=[(c,p) for c,_,p in images])
