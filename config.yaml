@@ -7,7 +7,7 @@
 # --- Source email (the daily report the automation reads) -------------------
 gmail:
   # Gmail search that finds the latest source report email.
-  search_query: 'subject:"CG VENTAS REPORT" has:attachment'
+  search_query: 'from:noreply.airtelkenya.com has:attachment'
 
 # --- Outgoing email (the dashboard mail the automation sends) ---------------
 email:
@@ -19,6 +19,9 @@ email:
   # {report_date} and {customer} are filled automatically. {customer} comes from
   # branding.country / branding.country_code below, so you don't repeat the name here.
   subject_template: "Ventas Daily Dashboard | {customer} | {report_date} (Last 7 Days)"
+  # The quantity (log-scale) slide is always inside the attached deck. Set this to true
+  # to ALSO show its image in the mail body; false = attachment only (default).
+  include_quantity_in_body: false
 
 # --- Google Drive upload ----------------------------------------------------
 drive:
@@ -38,8 +41,8 @@ report:
 # (e.g. country: "Congo", country_code: "CG").
 branding:
   title: "VENTAS DAILY DASHBOARD"
-  country: "Congo"
-  country_code: "CG"
+  country: "Kenya"
+  country_code: "KE"
   company: "6D Technologies"
   # customer: optional override. Leave blank to auto-use "Airtel <country> (<code>)".
   customer: ""

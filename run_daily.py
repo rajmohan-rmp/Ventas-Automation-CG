@@ -103,6 +103,9 @@ MIME_PPTX  = "application/vnd.openxmlformats-officedocument.presentationml.prese
 INLINE_CID  = "ventas_slide"
 INLINE_CID1 = "ventas_slide1"
 INLINE_CID2 = "ventas_slide2"
+INLINE_CIDQ = "ventas_quantity"
+# Show the quantity slide image in the mail body too? (it is always in the attached deck)
+QTY_IN_BODY = bool(_EMAIL.get("include_quantity_in_body", False))
 
 
 def check_connectivity(timeout=8):
@@ -480,8 +483,8 @@ def main():
              table_png_path=(None if args.no_image else png2))
 
     # Merge the log-scale quantity slide into the main deck as the last slide, so the
-    # email carries ONE .pptx. The quantity slide is intentionally NOT embedded in the
-    # mail body (only the first two slide images are shown inline below).
+    # email carries ONE .pptx. The quantity slide is in the attached deck either way;
+    # whether it ALSO appears in the mail body is controlled by email.include_quantity_in_body.
     qty_png = WORKDIR / f"Ventas_Quantity_{report_date}_slide.png"
     append_quantity_slide(csvs, report_date, out, png_path=qty_png)
 
@@ -491,6 +494,8 @@ def main():
             slide_to_png(out, png1)   # fallback to PowerPoint/LibreOffice for slide 1
         if png1.exists(): images.append((INLINE_CID1, "Daily Dashboard", png1))
         if png2.exists(): images.append((INLINE_CID2, "Weekly Transaction Trend", png2))
+        if QTY_IN_BODY and qty_png.exists():
+            images.append((INLINE_CIDQ, "Quantity Dashboard", qty_png))
         print("Inline images:", [str(p) for _,_,p in images])
 
     drive_link = None
