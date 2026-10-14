@@ -21,7 +21,7 @@ email:
   subject_template: "Ventas Daily Dashboard | {customer} | {report_date} (Last 7 Days)"
   # The quantity (log-scale) slide is always inside the attached deck. Set this to true
   # to ALSO show its image in the mail body; false = attachment only (default).
-  include_quantity_in_body: false
+  include_quantity_in_body: true
 
 # --- Google Drive upload ----------------------------------------------------
 drive:
@@ -41,8 +41,8 @@ report:
 # (e.g. country: "Congo", country_code: "CG").
 branding:
   title: "VENTAS DAILY DASHBOARD"
-  country: "Kenya"
-  country_code: "KE"
+  country: "Congo"
+  country_code: "CG"
   company: "6D Technologies"
   # customer: optional override. Leave blank to auto-use "Airtel <country> (<code>)".
   customer: ""
